@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Asistencia a las reuniones</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; background: #f4f5f7; color: #1f2328;
+      font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; font-size: 16px; }
+    .tarjeta { max-width: 520px; margin: 0 auto 16px; background: #fff; border-radius: 12px;
+      padding: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    h2 { font-size: 17px; margin: 0 0 12px; }
+    .sub { color: #59636e; margin: 0 0 20px; }
+    label.campo { display: block; font-weight: 600; margin: 16px 0 6px; }
+    select, input[type=text] { width: 100%; font-size: 16px; padding: 10px;
+      border: 1px solid #c8ccd1; border-radius: 8px; background: #fff; font-family: inherit; }
+    .fila { display: flex; gap: 12px; }
+    .fila > div { flex: 1; min-width: 0; }
+    .total { margin-top: 12px; color: #59636e; }
+    .total strong { color: #1f2328; }
+    .etiqueta { display: inline-block; font-size: 13px; background: #e7f0ff; color: #0b4fb3;
+      border-radius: 999px; padding: 3px 10px; margin-top: 8px; }
+    .oculto { display: none; }
+    button { width: 100%; margin-top: 24px; padding: 14px; font-size: 17px; font-weight: 600;
+      color: #fff; background: #1a73e8; border: 0; border-radius: 8px; cursor: pointer; }
+    button:disabled { background: #9bbcf0; cursor: default; }
+    .mensaje { margin-top: 16px; padding: 12px; border-radius: 8px; }
+    .ok { background: #e6f4ea; color: #1e6b34; }
+    .error { background: #fdecea; color: #a1281b; }
+    .obligatorio { color: #a1281b; }
+    .mes { font-weight: 600; margin: 14px 0 4px; text-transform: capitalize; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
+    th:first-child { width: 34%; }
+    th, td { text-align: right; padding: 6px 4px; border-bottom: 1px solid #eceef1; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: #59636e; font-weight: 600; }
+    .vacio { color: #59636e; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="tarjeta">
+    <h1>Asistencia a las reuniones</h1>
+    <p class="sub" id="titulo">Cargando...</p>
+
+    <div id="cerrado" class="mensaje error oculto"></div>
+
+    <form id="formulario" class="oculto" autocomplete="off">
+      <label class="campo" for="fecha">Fecha de la reunión</label>
+      <select id="fecha"></select>
+      <div id="tipo" class="etiqueta oculto"></div>
+
+      <div id="campos" class="oculto">
+        <div class="fila">
+          <div>
+            <label class="campo" for="presencial">Presencial <span class="obligatorio">*</span></label>
+            <input type="text" id="presencial" inputmode="numeric" maxlength="4">
+          </div>
+          <div>
+            <label class="campo" for="zoom">Por Zoom <span class="obligatorio">*</span></label>
+            <input type="text" id="zoom" inputmode="numeric" maxlength="4">
+          </div>
+        </div>
+        <div class="total">Total: <strong id="total">0</strong></div>
+        <button type="submit" id="enviar">Guardar asistencia</button>
+      </div>
+    </form>
+
+    <div id="mensaje" class="mensaje oculto"></div>
+  </div>
+
+  <div class="tarjeta oculto" id="bloqueRegistradas">
+    <h2>Ya registradas</h2>
+    <div id="registradas"></div>
+  </div>
+
+  <script>
+    // Servicio de Apps Script que lee y guarda los datos (la hoja de cálculo no es pública).
+    // Reemplaza el texto entre comillas por la dirección de la aplicación web (termina en /exec).
+    var API = 'https://script.google.com/macros/s/AKfycbw1G9eN_oD9HVymOestC5TFbQJ58cc3CzoZOLNt6zVLu8je8n6nOCOLKX2xpna0X1EZSA/exec';
+    var CODIGO = new URLSearchParams(location.search).get('clave') || '';
+    var pendientes = [];
+    var $ = function (id) { return document.getElementById(id); };
+
+    function llamar(pedido, alTerminar, alFallar) {
+      fetch(API, { method: 'POST', body: JSON.stringify(pedido), credentials: 'omit', redirect: 'follow' })
+        .then(function (r) { return r.json(); })
+        .then(function (r) { if (r.ok) alTerminar(r); else alFallar(new Error(r.error)); })
+        .catch(function () { alFallar(new Error('No hay conexión con el servicio. Revisa tu internet e intenta de nuevo.')); });
+    }
+
+    function mostrar(id, visible) { $(id).classList.toggle('oculto', !visible); }
+
+    function avisar(texto, tipo) {
+      var m = $('mensaje');
+      m.textContent = texto;
+      m.className = 'mensaje ' + tipo;
+      mostrar('mensaje', !!texto);
+    }
+
+    function soloNumero(texto) { return /^[0-9]{1,4}$/.test(texto); }
+
+    function cargar(d) {
+      $('titulo').textContent = 'Año de servicio ' + d.ano;
+      mostrar('formulario', true);
+      pendientes = d.pendientes;
+
+      var sel = $('fecha');
+      sel.innerHTML = '';
+      var primera = document.createElement('option');
+      primera.value = '';
+      primera.textContent = pendientes.length ? 'Elige una fecha' : 'No hay fechas pendientes';
+      sel.appendChild(primera);
+      var grupos = {};
+      // Las fechas más recientes primero.
+      pendientes.slice().reverse().forEach(function (f) {
+        if (!grupos[f.mes]) {
+          grupos[f.mes] = document.createElement('optgroup');
+          grupos[f.mes].label = f.mes.charAt(0).toUpperCase() + f.mes.slice(1);
+          sel.appendChild(grupos[f.mes]);
+        }
+        var op = document.createElement('option');
+        op.value = f.fecha;
+        op.textContent = f.etiqueta + ' · ' + f.reunion;
+        grupos[f.mes].appendChild(op);
+      });
+      sel.disabled = pendientes.length === 0;
+      limpiar();
+      mostrarRegistradas(d.registradas);
+    }
+
+    function mostrarRegistradas(lista) {
+      var cont = $('registradas');
+      cont.innerHTML = '';
+      mostrar('bloqueRegistradas', true);
+      if (!lista.length) {
+        cont.innerHTML = '<p class="vacio">Todavía no hay asistencia registrada este año.</p>';
+        return;
+      }
+      var meses = [];
+      var porMes = {};
+      lista.forEach(function (r) {
+        if (!porMes[r.mes]) { porMes[r.mes] = []; meses.push(r.mes); }
+        porMes[r.mes].push(r);
+      });
+      meses.reverse().forEach(function (mes) {
+        var titulo = document.createElement('div');
+        titulo.className = 'mes';
+        titulo.textContent = mes;
+        cont.appendChild(titulo);
+        var tabla = document.createElement('table');
+        var enc = tabla.insertRow();
+        ['Fecha', 'Presencial', 'Zoom', 'Total'].forEach(function (t) {
+          var th = document.createElement('th');
+          th.textContent = t;
+          enc.appendChild(th);
+        });
+        porMes[mes].forEach(function (r) {
+          var fila = tabla.insertRow();
+          [r.etiqueta, r.presencial, r.zoom, r.presencial + r.zoom].forEach(function (v) {
+            fila.insertCell().textContent = v;
+          });
+        });
+        cont.appendChild(tabla);
+      });
+    }
+
+    function elegida() {
+      var v = $('fecha').value;
+      return pendientes.find(function (f) { return f.fecha === v; }) || null;
+    }
+
+    function limpiar() {
+      $('presencial').value = '';
+      $('zoom').value = '';
+      actualizar();
+    }
+
+    function actualizar() {
+      var f = elegida();
+      mostrar('campos', !!f);
+      mostrar('tipo', !!f);
+      if (f) $('tipo').textContent = 'Reunión ' + (f.reunion === 'Entre semana' ? 'de entre semana' : 'del fin de semana');
+      var p = Number($('presencial').value) || 0;
+      var z = Number($('zoom').value) || 0;
+      $('total').textContent = p + z;
+    }
+
+    $('fecha').addEventListener('change', function () { avisar('', ''); limpiar(); });
+    $('presencial').addEventListener('input', actualizar);
+    $('zoom').addEventListener('input', actualizar);
+
+    $('formulario').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var f = elegida();
+      if (!f) { avisar('Elige una fecha.', 'error'); return; }
+      var presencial = $('presencial').value.trim();
+      var zoom = $('zoom').value.trim();
+      if (!soloNumero(presencial)) { avisar('Escribe la asistencia presencial (un número entero, 0 o más).', 'error'); return; }
+      if (!soloNumero(zoom)) { avisar('Escribe la asistencia por Zoom (escribe 0 si no hubo).', 'error'); return; }
+      $('enviar').disabled = true;
+      $('enviar').textContent = 'Guardando...';
+      llamar({ accion: 'enviar', clave: CODIGO, datos: { fecha: f.fecha, presencial: presencial, zoom: zoom } }, function (r) {
+        cargar(r);
+        avisar('Asistencia del ' + r.registrado.toLowerCase() + ' guardada.', 'ok');
+        $('enviar').disabled = false;
+        $('enviar').textContent = 'Guardar asistencia';
+        window.scrollTo(0, 0);
+      }, function (e) {
+        avisar(e.message || 'No se pudo guardar. Intenta de nuevo.', 'error');
+        $('enviar').disabled = false;
+        $('enviar').textContent = 'Guardar asistencia';
+      });
+    });
+
+    if (!/^[0-9a-f]{32}$/.test(CODIGO)) {
+      $('titulo').textContent = '';
+      $('cerrado').textContent = 'Este enlace no es válido. Pide el enlace correcto al secretario.';
+      mostrar('cerrado', true);
+    } else {
+      llamar({ accion: 'datos', clave: CODIGO }, cargar, function (e) {
+        $('titulo').textContent = '';
+        avisar(e.message || 'No se pudo cargar la información.', 'error');
+      });
+    }
+  </script>
+</body>
+</html>
