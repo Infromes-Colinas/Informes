@@ -33,12 +33,15 @@
     .error { background: #fdecea; color: #a1281b; }
     .obligatorio { color: #a1281b; }
     .mes { font-weight: 600; margin: 14px 0 4px; text-transform: capitalize; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
-    th:first-child { width: 34%; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { text-align: right; padding: 6px 4px; border-bottom: 1px solid #eceef1; }
     th:first-child, td:first-child { text-align: left; }
     th { color: #59636e; font-weight: 600; }
     .vacio { color: #59636e; font-size: 14px; }
+    .fija { font-size: 16px; padding: 10px; border-radius: 8px; background: #fff8e1; border: 1px solid #f0d58c; }
+    button.secundario { margin-top: 12px; color: #1a73e8; background: #fff; border: 1px solid #1a73e8; }
+    button.chico { width: auto; margin: 0; padding: 4px 10px; font-size: 14px; font-weight: 600;
+      color: #1a73e8; background: #fff; border: 1px solid #1a73e8; border-radius: 6px; }
   </style>
 </head>
 <body>
@@ -51,6 +54,7 @@
     <form id="formulario" class="oculto" autocomplete="off">
       <label class="campo" for="fecha">Fecha de la reunión</label>
       <select id="fecha"></select>
+      <div id="fechaFija" class="fija oculto"></div>
       <div id="tipo" class="etiqueta oculto"></div>
 
       <div id="campos" class="oculto">
@@ -66,6 +70,7 @@
         </div>
         <div class="total">Total: <strong id="total">0</strong></div>
         <button type="submit" id="enviar">Guardar asistencia</button>
+        <button type="button" id="cancelar" class="secundario oculto">Cancelar la corrección</button>
       </div>
     </form>
 
@@ -74,6 +79,7 @@
 
   <div class="tarjeta oculto" id="bloqueRegistradas">
     <h2>Ya registradas</h2>
+    <p class="vacio">Si te equivocaste en una fecha, pulsa «Corregir». Solo se puede mientras el mes esté abierto.</p>
     <div id="registradas"></div>
   </div>
 
@@ -83,6 +89,7 @@
     var API = 'https://script.google.com/macros/s/AKfycbw1G9eN_oD9HVymOestC5TFbQJ58cc3CzoZOLNt6zVLu8je8n6nOCOLKX2xpna0X1EZSA/exec';
     var CODIGO = new URLSearchParams(location.search).get('clave') || '';
     var pendientes = [];
+    var editando = null; // fecha ya registrada que se está corrigiendo
     var $ = function (id) { return document.getElementById(id); };
 
     function llamar(pedido, alTerminar, alFallar) {
@@ -128,7 +135,7 @@
         grupos[f.mes].appendChild(op);
       });
       sel.disabled = pendientes.length === 0;
-      limpiar();
+      salirDeCorreccion();
       mostrarRegistradas(d.registradas);
     }
 
@@ -153,7 +160,7 @@
         cont.appendChild(titulo);
         var tabla = document.createElement('table');
         var enc = tabla.insertRow();
-        ['Fecha', 'Presencial', 'Zoom', 'Total'].forEach(function (t) {
+        ['Fecha', 'Presencial', 'Zoom', 'Total', ''].forEach(function (t) {
           var th = document.createElement('th');
           th.textContent = t;
           enc.appendChild(th);
@@ -163,12 +170,48 @@
           [r.etiqueta, r.presencial, r.zoom, r.presencial + r.zoom].forEach(function (v) {
             fila.insertCell().textContent = v;
           });
+          var celda = fila.insertCell();
+          if (r.corregible) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'chico';
+            b.textContent = 'Corregir';
+            b.addEventListener('click', function () { iniciarCorreccion(r); });
+            celda.appendChild(b);
+          }
         });
         cont.appendChild(tabla);
       });
     }
 
+    function iniciarCorreccion(r) {
+      editando = r;
+      avisar('', '');
+      mostrar('fecha', false);
+      $('fechaFija').textContent = 'Corrigiendo: ' + r.etiqueta + ' · ' + r.reunion;
+      mostrar('fechaFija', true);
+      mostrar('cancelar', true);
+      $('enviar').textContent = 'Guardar corrección';
+      $('presencial').value = r.presencial;
+      $('zoom').value = r.zoom;
+      actualizar();
+      window.scrollTo(0, 0);
+      $('presencial').focus();
+    }
+
+    function salirDeCorreccion() {
+      editando = null;
+      mostrar('fecha', true);
+      mostrar('fechaFija', false);
+      mostrar('cancelar', false);
+      $('enviar').textContent = 'Guardar asistencia';
+      limpiar();
+    }
+
+    function textoBoton() { return editando ? 'Guardar corrección' : 'Guardar asistencia'; }
+
     function elegida() {
+      if (editando) return editando;
       var v = $('fecha').value;
       return pendientes.find(function (f) { return f.fecha === v; }) || null;
     }
@@ -192,6 +235,7 @@
     $('fecha').addEventListener('change', function () { avisar('', ''); limpiar(); });
     $('presencial').addEventListener('input', actualizar);
     $('zoom').addEventListener('input', actualizar);
+    $('cancelar').addEventListener('click', function () { avisar('', ''); salirDeCorreccion(); });
 
     $('formulario').addEventListener('submit', function (ev) {
       ev.preventDefault();
@@ -201,18 +245,22 @@
       var zoom = $('zoom').value.trim();
       if (!soloNumero(presencial)) { avisar('Escribe la asistencia presencial (un número entero, 0 o más).', 'error'); return; }
       if (!soloNumero(zoom)) { avisar('Escribe la asistencia por Zoom (escribe 0 si no hubo).', 'error'); return; }
+      var corrigiendo = !!editando;
       $('enviar').disabled = true;
+      $('cancelar').disabled = true;
       $('enviar').textContent = 'Guardando...';
-      llamar({ accion: 'enviar', clave: CODIGO, datos: { fecha: f.fecha, presencial: presencial, zoom: zoom } }, function (r) {
+      llamar({ accion: corrigiendo ? 'corregir' : 'enviar', clave: CODIGO,
+        datos: { fecha: f.fecha, presencial: presencial, zoom: zoom } }, function (r) {
         cargar(r);
-        avisar('Asistencia del ' + r.registrado.toLowerCase() + ' guardada.', 'ok');
+        avisar('Asistencia del ' + r.registrado + (corrigiendo ? ' corregida.' : ' guardada.'), 'ok');
         $('enviar').disabled = false;
-        $('enviar').textContent = 'Guardar asistencia';
+        $('cancelar').disabled = false;
         window.scrollTo(0, 0);
       }, function (e) {
         avisar(e.message || 'No se pudo guardar. Intenta de nuevo.', 'error');
         $('enviar').disabled = false;
-        $('enviar').textContent = 'Guardar asistencia';
+        $('cancelar').disabled = false;
+        $('enviar').textContent = textoBoton();
       });
     });
 
