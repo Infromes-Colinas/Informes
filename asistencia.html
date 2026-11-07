@@ -6,52 +6,77 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="referrer" content="no-referrer">
   <title>Asistencia a las reuniones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Montserrat:wght@300;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; padding: 16px; background: #f4f5f7; color: #1f2328;
-      font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; font-size: 16px; }
-    .tarjeta { max-width: 520px; margin: 0 auto 16px; background: #fff; border-radius: 12px;
-      padding: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
-    h1 { font-size: 20px; margin: 0 0 4px; }
-    h2 { font-size: 17px; margin: 0 0 12px; }
-    .sub { color: #59636e; margin: 0 0 20px; }
-    label.campo { display: block; font-weight: 600; margin: 16px 0 6px; }
-    select, input[type=text] { width: 100%; font-size: 16px; padding: 10px;
-      border: 1px solid #c8ccd1; border-radius: 8px; background: #fff; font-family: inherit; }
+    body { margin: 0; background: #F4F6F9; color: #2B2B2B;
+      font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; font-size: 16px; }
+    :focus-visible { outline: 2px solid #1F5FA8; outline-offset: 2px; }
+    .cabecera { background: #0B2E6B; color: #fff; padding: 28px 20px 24px; }
+    .cabecera .interior { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 6px; }
+    .sobretitulo { font-family: Montserrat, Inter, sans-serif; font-weight: 300; font-size: 12px;
+      letter-spacing: .2em; color: #9FE3DD; text-transform: uppercase; }
+    h1 { font-family: Montserrat, Inter, sans-serif; font-size: 24px; font-weight: 700; margin: 0; }
+    h2 { font-family: Montserrat, Inter, sans-serif; font-size: 17px; font-weight: 700; color: #0B2E6B; margin: 0 0 4px; }
+    .pastillas { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .pastilla { padding: 6px 12px; border-radius: 999px; background: #4CC9C0; color: #0B2E6B;
+      font-size: 13px; font-weight: 600; }
+    .pastilla.clara { background: #23457F; color: #fff; }
+    .pastilla:empty { display: none; }
+    .contenido { max-width: 520px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .tarjeta { background: #fff; border: 1px solid #E6E8EB; border-radius: 16px; padding: 18px; }
+    label.campo { display: block; font-size: 13px; font-weight: 600; color: #55606E; margin: 18px 0 6px; }
+    label.campo:first-child { margin-top: 0; }
+    select, input[type=text], textarea { width: 100%; min-height: 44px; font-size: 16px; padding: 10px 14px;
+      border: 1px solid #7F8A99; border-radius: 12px; background: #fff; color: #2B2B2B; font-family: inherit; }
+    select:disabled { background: #F4F6F9; color: #55606E; }
+    textarea { min-height: 88px; resize: vertical; }
+    .nota { font-size: 13px; color: #55606E; margin-top: 6px; }
+    .etiqueta { display: inline-block; font-size: 13px; font-weight: 600; background: #E4F3F8; color: #0B2E6B;
+      border-radius: 999px; padding: 4px 12px; margin-top: 10px; }
+    .oculto { display: none !important; }
+    button { width: 100%; min-height: 48px; margin-top: 24px; padding: 12px; font-size: 16px; font-weight: 600;
+      font-family: inherit; color: #fff; background: #1F5FA8; border: 0; border-radius: 12px; cursor: pointer; }
+    button:disabled { background: #E6E8EB; color: #55606E; cursor: default; }
+    .mensaje { padding: 14px 16px; border-radius: 12px; font-size: 15px; line-height: 1.5; }
+    .ok { background: #E2F6F4; color: #0B5A54; }
+    .error { background: #FDECEA; color: #A1281B; }
+    .obligatorio { color: #A1281B; }
+    .pie { text-align: center; font-size: 13px; color: #55606E; padding: 4px 0 24px; }
     .fila { display: flex; gap: 12px; }
     .fila > div { flex: 1; min-width: 0; }
-    .total { margin-top: 12px; color: #59636e; }
-    .total strong { color: #1f2328; }
-    .etiqueta { display: inline-block; font-size: 13px; background: #e7f0ff; color: #0b4fb3;
-      border-radius: 999px; padding: 3px 10px; margin-top: 8px; }
-    .oculto { display: none; }
-    button { width: 100%; margin-top: 24px; padding: 14px; font-size: 17px; font-weight: 600;
-      color: #fff; background: #1a73e8; border: 0; border-radius: 8px; cursor: pointer; }
-    button:disabled { background: #9bbcf0; cursor: default; }
-    .mensaje { margin-top: 16px; padding: 12px; border-radius: 8px; }
-    .ok { background: #e6f4ea; color: #1e6b34; }
-    .error { background: #fdecea; color: #a1281b; }
-    .obligatorio { color: #a1281b; }
-    .mes { font-weight: 600; margin: 14px 0 4px; text-transform: capitalize; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th, td { text-align: right; padding: 6px 4px; border-bottom: 1px solid #eceef1; }
+    .total { display: flex; justify-content: space-between; align-items: center; margin-top: 14px;
+      padding: 12px 14px; border-radius: 12px; background: #F4F6F9; color: #55606E; }
+    .total strong { font-size: 20px; color: #0B2E6B; font-variant-numeric: tabular-nums; }
+    .fija { min-height: 44px; display: flex; align-items: center; padding: 0 14px; border-radius: 12px;
+      background: #E4F3F8; color: #0B2E6B; font-weight: 600; }
+    button.secundario { margin-top: 10px; color: #1F5FA8; background: #E8F0FA; }
+    button.chico { width: auto; min-height: 36px; margin: 0; padding: 0 12px; font-size: 14px;
+      color: #1F5FA8; background: #fff; border: 1px solid #1F5FA8; border-radius: 10px; }
+    .mes { font-weight: 600; margin: 16px 0 4px; text-transform: capitalize; color: #0B2E6B; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+    th, td { text-align: right; padding: 8px 4px; border-bottom: 1px solid #EEF0F2; }
     th:first-child, td:first-child { text-align: left; }
-    th { color: #59636e; font-weight: 600; }
-    .vacio { color: #59636e; font-size: 14px; }
-    .fija { font-size: 16px; padding: 10px; border-radius: 8px; background: #fff8e1; border: 1px solid #f0d58c; }
-    button.secundario { margin-top: 12px; color: #1a73e8; background: #fff; border: 1px solid #1a73e8; }
-    button.chico { width: auto; margin: 0; padding: 4px 10px; font-size: 14px; font-weight: 600;
-      color: #1a73e8; background: #fff; border: 1px solid #1a73e8; border-radius: 6px; }
+    th { color: #55606E; font-weight: 600; font-size: 13px; }
+    .vacio { color: #55606E; font-size: 14px; margin: 0; }
   </style>
 </head>
 <body>
-  <div class="tarjeta">
-    <h1>Asistencia a las reuniones</h1>
-    <p class="sub" id="titulo">Cargando...</p>
+  <header class="cabecera">
+    <div class="interior">
+      <span class="sobretitulo">Colinas de Oro</span>
+      <h1>Asistencia a las reuniones</h1>
+      <div class="pastillas"><span class="pastilla" id="titulo">Cargando...</span></div>
+    </div>
+  </header>
 
+  <main class="contenido">
     <div id="cerrado" class="mensaje error oculto"></div>
+    <div id="mensaje" class="mensaje oculto" role="status"></div>
 
-    <form id="formulario" class="oculto" autocomplete="off">
+    <form id="formulario" class="tarjeta oculto" autocomplete="off">
       <label class="campo" for="fecha">Fecha de la reunión</label>
       <select id="fecha"></select>
       <div id="fechaFija" class="fija oculto"></div>
@@ -68,20 +93,20 @@
             <input type="text" id="zoom" inputmode="numeric" maxlength="4">
           </div>
         </div>
-        <div class="total">Total: <strong id="total">0</strong></div>
+        <div class="total"><span>Total</span><strong id="total">0</strong></div>
         <button type="submit" id="enviar">Guardar asistencia</button>
         <button type="button" id="cancelar" class="secundario oculto">Cancelar la corrección</button>
       </div>
     </form>
 
-    <div id="mensaje" class="mensaje oculto"></div>
-  </div>
+    <section class="tarjeta oculto" id="bloqueRegistradas">
+      <h2>Ya registradas</h2>
+      <p class="vacio">Si te equivocaste en una fecha, pulsa «Corregir». Solo se puede mientras el mes esté abierto.</p>
+      <div id="registradas"></div>
+    </section>
 
-  <div class="tarjeta oculto" id="bloqueRegistradas">
-    <h2>Ya registradas</h2>
-    <p class="vacio">Si te equivocaste en una fecha, pulsa «Corregir». Solo se puede mientras el mes esté abierto.</p>
-    <div id="registradas"></div>
-  </div>
+    <p class="pie">Solo cantidades: no se registra quién asistió.</p>
+  </main>
 
   <script>
     // Servicio de Apps Script que lee y guarda los datos (la hoja de cálculo no es pública).
